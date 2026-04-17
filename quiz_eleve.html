@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz — Théories des Organisations</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08080C;--ink:#F5F0E8;--ink2:#9B9690;--ink3:#5A5650;
+  --card:#111116;--card2:#18181E;--rim:rgba(255,255,255,.07);--rim2:rgba(255,255,255,.14);
+  --gold:#C9A84C;--gold-lt:#F0D080;--teal:#3ECFBE;--teal-lt:#7EEEE4;
+  --ok:#3ECF6A;--ok-bg:rgba(62,207,106,.1);--ok-rim:rgba(62,207,106,.35);
+  --err:#EF5050;--err-bg:rgba(239,80,80,.1);--err-rim:rgba(239,80,80,.35);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}
+#cvs{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5}
+.wrap{position:relative;z-index:1;max-width:780px;margin:0 auto;padding:2.5rem 2rem 5rem}
+
+/* TOP BAR */
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:3rem;gap:12px;flex-wrap:wrap}
+.logo{font-family:'Playfair Display',serif;font-style:italic;font-weight:700;font-size:15px;color:var(--ink2)}
+.hud{display:flex;gap:8px}
+.pill{font-size:13px;font-weight:500;padding:7px 16px;border-radius:99px;border:1px solid var(--rim);background:var(--card);color:var(--ink2)}
+.pill b{color:var(--ink);font-weight:600}
+.timer.hot{border-color:var(--err-rim);color:var(--err);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.65}}
+
+/* PROGRESS */
+.prog-wrap{margin-bottom:2.5rem}
+.prog-track{height:2px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;margin-bottom:.75rem}
+.prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--teal));transition:width .6s cubic-bezier(.4,0,.2,1);box-shadow:0 0 12px rgba(62,207,190,.4)}
+.prog-meta{display:flex;justify-content:space-between}
+.prog-text{font-size:12px;color:var(--ink3);letter-spacing:.04em}
+
+/* SCHOOL TAG */
+.school-tag{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px 6px 12px;border-radius:99px;border:1px solid;margin-bottom:1.5rem;transition:all .4s}
+.school-tag .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.tag-classic{color:var(--gold);border-color:rgba(201,168,76,.3);background:rgba(201,168,76,.07)}
+.tag-rh{color:var(--teal);border-color:rgba(62,207,190,.3);background:rgba(62,207,190,.07)}
+.tag-neutral{color:var(--ink3);border-color:var(--rim);background:transparent}
+
+/* CARD */
+.q-card{position:relative;background:var(--card);border:1px solid var(--rim);border-radius:28px;padding:2.5rem 2.5rem 2rem;overflow:hidden;animation:cardIn .45s cubic-bezier(.4,0,.2,1)}
+@keyframes cardIn{from{opacity:0;transform:translateY(20px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.card-glow{position:absolute;top:-80px;right:-80px;width:280px;height:280px;border-radius:50%;pointer-events:none;opacity:.06;filter:blur(60px);transition:background .5s}
+.glow-classic{background:var(--gold)}.glow-rh{background:var(--teal)}
+.q-num{font-family:'Playfair Display',serif;font-size:72px;font-weight:900;line-height:1;color:rgba(255,255,255,.04);position:absolute;top:-10px;right:2rem;pointer-events:none;user-select:none}
+.q-type{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:1.5rem;display:flex;align-items:center;gap:10px}
+.q-type::after{content:'';flex:1;height:1px;background:var(--rim)}
+.q-text{font-family:'Playfair Display',serif;font-size:22px;line-height:1.5;color:var(--ink);margin-bottom:2rem;font-weight:700}
+
+/* ANSWERS */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}}
+.ans{background:var(--card2);border:1px solid var(--rim);border-radius:16px;padding:16px 20px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:400;color:var(--ink2);text-align:left;line-height:1.5;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.ans:hover:not(:disabled){border-color:var(--rim2);color:var(--ink);transform:translateY(-2px)}
+.ans:disabled{cursor:default}
+.ans.correct{background:var(--ok-bg);border-color:var(--ok-rim);color:#86f0a8}
+.ans.wrong{background:var(--err-bg);border-color:var(--err-rim);color:#fca5a5}
+.ans.reveal{background:var(--ok-bg);border-color:var(--ok-rim);color:#86f0a8}
+.vf-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vf{padding:22px;border-radius:18px;border:1px solid var(--rim);background:var(--card2);font-family:'Playfair Display',serif;font-style:italic;font-size:20px;font-weight:700;text-align:center;color:var(--ink2);cursor:pointer;transition:all .18s}
+.vf:hover:not(:disabled){border-color:var(--rim2);color:var(--ink);transform:translateY(-2px)}
+.vf:disabled{cursor:default}
+.vf.correct{background:var(--ok-bg);border-color:var(--ok-rim);color:#86f0a8}
+.vf.wrong{background:var(--err-bg);border-color:var(--err-rim);color:#fca5a5}
+
+/* CHIPS */
+.chips-wrap{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:1.5rem}
+.chip{background:var(--card2);border:1px solid var(--rim);border-radius:99px;padding:9px 18px;font-size:13px;font-family:'Outfit',sans-serif;color:var(--ink2);cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--rim2);color:var(--ink)}
+.chip.sel{border-color:rgba(62,207,190,.5);background:rgba(62,207,190,.08);color:var(--teal)}
+.chip.correct{background:var(--ok-bg);border-color:var(--ok-rim);color:#86f0a8}
+.chip.wrong{background:var(--err-bg);border-color:var(--err-rim);color:#fca5a5}
+.chip.reveal{background:var(--ok-bg);border-color:var(--ok-rim);color:#86f0a8}
+.chip:disabled{cursor:default}
+
+/* MATCH */
+.bank{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:1.75rem;min-height:44px}
+.ditem{background:var(--card2);border:1px solid var(--rim);border-radius:10px;padding:9px 16px;font-size:13px;color:var(--ink2);cursor:grab;user-select:none;transition:all .15s}
+.ditem:hover{border-color:var(--rim2);color:var(--ink);transform:translateY(-1px)}
+.ditem.placed{opacity:.22;pointer-events:none}
+.mrows{display:flex;flex-direction:column;gap:10px}
+.mrow{display:flex;align-items:center;gap:14px}
+.mauthor{flex:0 0 180px;font-size:14px;font-weight:500;color:var(--ink)}
+.dzone{flex:1;min-height:46px;background:var(--card2);border:1.5px dashed var(--rim2);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink3);transition:all .15s;display:flex;align-items:center}
+.dzone.over{border-color:var(--teal);background:rgba(62,207,190,.07);color:var(--teal)}
+.dzone.ok{border-color:var(--ok-rim);border-style:solid;background:var(--ok-bg);color:#86f0a8}
+.dzone.ko{border-color:var(--err-rim);border-style:solid;background:var(--err-bg);color:#fca5a5}
+
+/* FEEDBACK */
+.fb{margin-top:1.5rem;padding:14px 18px;border-left:2px solid;border-radius:0 12px 12px 0;font-size:13px;line-height:1.65;display:none;animation:fadeIn .35s ease}
+.fb.show{display:block}
+.fb-classic{border-color:var(--gold);background:rgba(201,168,76,.06);color:rgba(240,208,128,.85)}
+.fb-rh{border-color:var(--teal);background:rgba(62,207,190,.06);color:rgba(126,238,228,.85)}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+
+/* BUTTONS */
+.btn{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:12px 24px;border-radius:12px;border:1px solid var(--rim2);background:transparent;color:var(--ink2);cursor:pointer;transition:all .18s}
+.btn:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.25);color:var(--ink);transform:translateY(-1px)}
+.btn-primary{background:linear-gradient(135deg,var(--gold),#A07830);border-color:transparent;color:#1A1200;font-weight:600;box-shadow:0 4px 20px rgba(201,168,76,.25)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(201,168,76,.35);color:#1A1200}
+
+/* SCORE FLASH */
+.score-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.5);font-family:'Playfair Display',serif;font-style:italic;font-weight:900;font-size:80px;pointer-events:none;z-index:100;opacity:0;transition:all .15s}
+.score-flash.show{opacity:1;transform:translate(-50%,-55%) scale(1)}
+.score-flash.hide{opacity:0;transform:translate(-50%,-65%) scale(1.1)}
+.flash-ok{color:var(--ok);text-shadow:0 0 40px rgba(62,207,106,.6)}
+.flash-ko{color:var(--err);text-shadow:0 0 40px rgba(239,80,80,.6)}
+
+/* SPLASH / RESULTS */
+.splash{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;animation:cardIn .4s ease}
+.splash-inner{text-align:center;padding:2rem;max-width:480px}
+.splash-title{font-family:'Playfair Display',serif;font-style:italic;font-size:38px;font-weight:900;margin-bottom:.5rem;background:linear-gradient(135deg,var(--gold-lt),var(--gold),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.splash-sub{font-size:15px;color:var(--ink2);margin-bottom:2.5rem;line-height:1.6}
+.name-input{width:100%;background:var(--card);border:1px solid var(--rim2);border-radius:14px;padding:16px 20px;font-family:'Outfit',sans-serif;font-size:16px;color:var(--ink);outline:none;transition:border-color .2s;margin-bottom:1rem;text-align:center}
+.name-input:focus{border-color:rgba(201,168,76,.5)}
+.name-input::placeholder{color:var(--ink3)}
+.start-btn{width:100%;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:16px;border-radius:14px;background:linear-gradient(135deg,var(--gold),#A07830);border:none;color:#1A1200;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(201,168,76,.3)}
+.start-btn:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(201,168,76,.4)}
+.start-btn:disabled{opacity:.4;cursor:default;transform:none}
+
+.res-card{background:var(--card);border:1px solid var(--rim);border-radius:28px;padding:4rem 3rem;text-align:center;animation:cardIn .5s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.res-bg{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,rgba(201,168,76,.08) 0%,transparent 65%),radial-gradient(ellipse at 50% 100%,rgba(62,207,190,.06) 0%,transparent 65%)}
+.res-label{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:1.5rem}
+.res-big{font-family:'Playfair Display',serif;font-weight:900;font-style:italic;font-size:100px;line-height:1;background:linear-gradient(135deg,var(--gold-lt),var(--gold),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.25rem}
+.res-max{font-size:16px;color:var(--ink3);margin-bottom:.75rem;font-weight:300}
+.res-name{font-size:18px;color:var(--ink);margin-bottom:.5rem;font-weight:500}
+.res-msg{font-size:15px;color:var(--ink2);margin-bottom:2.5rem;line-height:1.5}
+.stats{display:flex;justify-content:center;gap:1rem;margin-bottom:2.5rem;flex-wrap:wrap}
+.stat{background:var(--card2);border:1px solid var(--rim);border-radius:18px;padding:1.25rem 1.75rem;min-width:100px}
+.sv{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:var(--ink);display:block}
+.sl{font-size:11px;color:var(--ink3);display:block;margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
+.send-status{font-size:13px;color:var(--ink3);margin-bottom:1.5rem;min-height:20px}
+.send-ok{color:#86f0a8}
+.send-err{color:#fca5a5}
+</style>
+</head>
+<body>
+<canvas id="cvs"></canvas>
+<div class="score-flash" id="flash"></div>
+
+<!-- SPLASH SCREEN -->
+<div class="splash" id="splash">
+  <div class="splash-inner">
+    <div class="splash-title">Théories des<br>organisations</div>
+    <div class="splash-sub">Quiz de révision — Séance 1<br>École classique &amp; Relations humaines</div>
+    <input class="name-input" id="nameInput" type="text" placeholder="Ton prénom…" oninput="document.getElementById('startBtn').disabled=this.value.trim().length<2" autocomplete="off" />
+    <button class="start-btn" id="startBtn" onclick="startQuiz()" disabled>Commencer le quiz →</button>
+  </div>
+</div>
+
+<div class="wrap" id="mainWrap" style="display:none">
+  <div class="topbar">
+    <div class="logo">Théories des organisations — Séance 1</div>
+    <div class="hud">
+      <div class="pill">Score&nbsp;<b id="sc">0</b></div>
+      <div class="pill timer" id="tim">10:00</div>
+    </div>
+  </div>
+  <div class="prog-wrap">
+    <div class="prog-track"><div class="prog-fill" id="pf" style="width:0%"></div></div>
+    <div class="prog-meta">
+      <span class="prog-text" id="pt">Question 1 / 10</span>
+      <span class="prog-text" id="pts">0 / 12 pts</span>
+    </div>
+  </div>
+  <div id="stag" class="school-tag tag-neutral"><span class="dot"></span>Introduction</div>
+  <div id="game"></div>
+</div>
+
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwmXKTN34EXPyB2KzHinYsOoekhOuqL6IerI8SmdTiHi9GuEDxaJyy2obdPUSqfJ843Dg/exec";
+const TOTAL=600;
+let tl=TOTAL,tr,score=0,qi=0,answered=false;
+let selChips=new Set(),dragTxt='',dragSrc='';
+let matchSt={},nCorrect=0,nWrong=0;
+let playerName='';
+let startTime=0;
+const MAX=12;
+
+/* PARTICLES */
+(function(){
+  const c=document.getElementById('cvs'),ctx=c.getContext('2d');
+  let W,H,pts=[];
+  function resize(){W=c.width=innerWidth;H=c.height=innerHeight}
+  resize();window.addEventListener('resize',resize);
+  for(let i=0;i<60;i++)pts.push({x:Math.random()*2000,y:Math.random()*1200,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.12,r:Math.random()*1.2+.3,hue:Math.random()<.5?42:175});
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;ctx.beginPath();ctx.arc(p.x*(W/2000),p.y*(H/1200),p.r,0,Math.PI*2);ctx.fillStyle=`hsla(${p.hue},60%,60%,.45)`;ctx.fill()});
+    pts.forEach((a,i)=>{for(let j=i+1;j<pts.length;j++){const b=pts[j],dx=(a.x-b.x)*(W/2000),dy=(a.y-b.y)*(H/1200),d=Math.sqrt(dx*dx+dy*dy);if(d<90){ctx.beginPath();ctx.moveTo(a.x*(W/2000),a.y*(H/1200));ctx.lineTo(b.x*(W/2000),b.y*(H/1200));ctx.strokeStyle=`rgba(255,255,255,${.04*(1-d/90)})`;ctx.lineWidth=.5;ctx.stroke()}}});
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* KEY HANDLER */
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('splash').style.display!=='none'){const n=document.getElementById('nameInput').value.trim();if(n.length>=2)startQuiz()}});
+
+const Qs=[
+  {type:'qcm',school:'classic',q:"Quel penseur est à l'origine de l'Organisation Scientifique du Travail (OST) ?",ch:["Henry Fayol","Frederic Taylor","Max Weber","Elton Mayo"],ans:1,fb:"Taylor décompose le travail en tâches élémentaires chronométrées et sépare strictement conception (ingénieurs) et exécution (ouvriers)."},
+  {type:'qcm',school:'classic',q:"Quelle est la signification de l'acronyme POCCC défini par Henri Fayol ?",ch:["Planifier, Organiser, Concevoir, Contrôler, Communiquer","Planifier, Organiser, Commander, Coordonner, Contrôler","Produire, Organiser, Communiquer, Contrôler, Coopérer","Programmer, Optimiser, Créer, Contrôler, Conclure"],ans:1,fb:"Fayol identifie 5 fonctions du gestionnaire : Prévoir, Organiser, Commander, Coordonner, Contrôler. C'est le socle du management moderne."},
+  {type:'vf',school:'classic',q:"Max Weber décrit la bureaucratie comme une forme d'organisation rationnelle, fondée sur des règles formelles et la compétence technique.",ans:true,fb:"Vrai. Pour Weber, la bureaucratie est la forme la plus rationnelle : hiérarchie claire, règles impersonnelles, recrutement par compétence."},
+  {type:'qcm',school:'classic',q:"Henry Ford est principalement associé à :",ch:["La gestion par objectifs","Le travail à la chaîne et la production en série","Les styles de leadership","L'enrichissement des tâches"],ans:1,fb:"Ford généralise le travail à la chaîne (fordisme) avec la production standardisée — symbole de l'efficacité industrielle de l'école classique."},
+  {type:'qcm',school:'rh',q:"Les expériences Hawthorne (Elton Mayo) ont montré que la productivité était surtout liée à :",ch:["L'éclairage et la température de l'atelier","L'attention portée aux travailleurs et les relations sociales","Les primes financières","La durée du temps de travail"],ans:1,fb:"Mayo découvre l'effet Hawthorne : l'intérêt porté aux ouvriers améliore la productivité. Naissance de l'école des relations humaines."},
+  {type:'match',school:'rh',q:"Glisse chaque apport vers l'auteur correspondant",pairs:[{l:"Abraham Maslow",a:"Pyramide des besoins"},{l:"Douglas McGregor",a:"Profils X et Y"},{l:"Frederick Herzberg",a:"Enrichissement des tâches"}],decoys:["Travail à la chaîne","Styles de leadership"],fb:"Maslow → besoins | McGregor → théorie X vs Y | Herzberg → motiver par le contenu du travail."},
+  {type:'chips',school:'rh',q:"Quelles affirmations caractérisent l'École des relations humaines ? (plusieurs réponses)",ch:["S'intéresse au facteur humain au travail","Prône uniquement l'optimisation de la production","Cherche à comprendre l'individu pour le motiver","Ignore les besoins sociaux des travailleurs","Intègre une dimension psychologique et sociologique"],ci:[0,2,4],fb:"L'école des relations humaines s'intéresse à l'individu, ses besoins, ses motivations et ses relations sociales."},
+  {type:'qcm',school:'rh',q:"Selon la théorie Y de McGregor, l'employé est vu comme :",ch:["Naturellement paresseux et peu fiable","Capable d'initiative, d'auto-contrôle et de créativité","Motivé uniquement par l'argent","Ayant besoin d'une surveillance permanente"],ans:1,fb:"Théorie Y : l'homme peut s'épanouir au travail, il est capable d'initiative et de responsabilité."},
+  {type:'vf',school:'classic',q:"L'objectif principal de l'École classique était d'optimiser la production en séparant strictement conception et exécution.",ans:true,fb:"Vrai. L'enjeu de l'École classique (1900-1930) est l'efficacité productive. Taylor, Ford, Fayol et Weber proposent chacun une méthode d'organisation rationnelle."},
+  {type:'qcm',school:'rh',q:"Kurt Lewin et Rensis Likert sont principalement connus pour leurs travaux sur :",ch:["Les structures bureaucratiques","Les styles de leadership","La pyramide des besoins","L'organisation scientifique du travail"],ans:1,fb:"Lewin et Likert ont étudié les styles de leadership (autoritaire, démocratique, laisser-faire) et leur impact sur la performance des groupes."}
+];
+
+function fmt(s){return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
+
+function startQuiz(){
+  playerName=document.getElementById('nameInput').value.trim();
+  if(playerName.length<2)return;
+  document.getElementById('splash').style.display='none';
+  document.getElementById('mainWrap').style.display='block';
+  startTime=Date.now();
+  startTimer();render();
+}
+
+function startTimer(){
+  tr=setInterval(()=>{
+    tl--;
+    const el=document.getElementById('tim');
+    el.textContent=fmt(tl);
+    if(tl<=60)el.classList.add('hot');
+    if(tl<=0){clearInterval(tr);showResults()}
+  },1000);
+}
+
+function hud(){
+  document.getElementById('sc').textContent=score;
+  document.getElementById('pt').textContent=`Question ${qi+1} / ${Qs.length}`;
+  document.getElementById('pts').textContent=`${score} / ${MAX} pts`;
+  document.getElementById('pf').style.width=(qi/Qs.length*100)+'%';
+}
+
+function setTag(school){
+  const t=document.getElementById('stag');t.className='school-tag';
+  if(school==='classic'){t.classList.add('tag-classic');t.innerHTML='<span class="dot"></span>École classique'}
+  else if(school==='rh'){t.classList.add('tag-rh');t.innerHTML='<span class="dot"></span>Relations humaines'}
+  else{t.classList.add('tag-neutral');t.innerHTML='<span class="dot"></span>Introduction'}
+}
+
+function flash(ok){
+  const el=document.getElementById('flash');
+  el.textContent=ok?'+1':'✗';el.className='score-flash '+(ok?'flash-ok':'flash-ko');
+  setTimeout(()=>el.classList.add('show'),10);
+  setTimeout(()=>{el.classList.remove('show');el.classList.add('hide')},700);
+  setTimeout(()=>el.className='score-flash',950);
+}
+
+function render(){
+  if(qi>=Qs.length){clearInterval(tr);showResults();return}
+  answered=false;selChips=new Set();hud();
+  const q=Qs[qi];setTag(q.school);
+  const glowCls=q.school==='classic'?'glow-classic':'glow-rh';
+  const fbCls=q.school==='classic'?'fb-classic':'fb-rh';
+  const typeLabel=q.type==='qcm'?'QCM':q.type==='vf'?'Vrai / Faux':q.type==='chips'?'Choix multiples':'Association';
+  let html=`<div class="q-card"><div class="card-glow ${glowCls}"></div><div class="q-num">${String(qi+1).padStart(2,'0')}</div><div class="q-type">${typeLabel}</div><div class="q-text">${q.q}</div>`;
+
+  if(q.type==='qcm'){
+    html+=`<div class="grid2">`;
+    q.ch.forEach((c,i)=>html+=`<button class="ans" id="a${i}" onclick="cQCM(${i})">${c}</button>`);
+    html+=`</div>`;
+  }else if(q.type==='vf'){
+    html+=`<div class="vf-row"><button class="vf" id="vt" onclick="cVF(true)"><em>Vrai</em></button><button class="vf" id="vf2" onclick="cVF(false)"><em>Faux</em></button></div>`;
+  }else if(q.type==='chips'){
+    html+=`<div class="chips-wrap">`;
+    q.ch.forEach((c,i)=>html+=`<button class="chip" id="ch${i}" onclick="tChip(${i})">${c}</button>`);
+    html+=`</div><div style="margin-top:0"><button class="btn" onclick="cChips()">Valider</button></div>`;
+  }else if(q.type==='match'){
+    matchSt={};q.pairs.forEach((_,i)=>matchSt[i]=null);
+    const pool=[...q.pairs.map(p=>p.a),...q.decoys].sort(()=>Math.random()-.5);
+    html+=`<div class="bank" id="bank">`;
+    pool.forEach((a,i)=>html+=`<div class="ditem" id="bk${i}" draggable="true" ondragstart="dStart(event,'${a.replace(/'/g,"\\'")}','bk${i}')">${a}</div>`);
+    html+=`</div><div class="mrows">`;
+    q.pairs.forEach((p,i)=>html+=`<div class="mrow"><div class="mauthor">${p.l}</div><div class="dzone" id="dz${i}" ondragover="dOver(event)" ondragleave="dLeave(event)" ondrop="dDrop(event,${i})">Dépose ici…</div></div>`);
+    html+=`</div><div style="margin-top:1.25rem"><button class="btn" id="vm" onclick="cMatch()">Valider</button></div>`;
+  }
+  html+=`<div class="fb ${fbCls}" id="fb">${q.fb}</div></div>`;
+  document.getElementById('game').innerHTML=html;
+}
+
+function addNext(){
+  const card=document.querySelector('.q-card');
+  const b=document.createElement('button');
+  b.className='btn btn-primary';b.style.marginTop='1.5rem';b.style.display='block';
+  b.textContent=qi<Qs.length-1?'Question suivante →':'Voir mes résultats →';
+  b.onclick=()=>{qi++;render()};card.appendChild(b);
+}
+
+function showFB(){const f=document.getElementById('fb');if(f)f.classList.add('show')}
+
+function cQCM(i){
+  if(answered)return;answered=true;
+  const q=Qs[qi];
+  q.ch.forEach((_,j)=>{const b=document.getElementById('a'+j);b.disabled=true;if(j===q.ans)b.classList.add('correct');else if(j===i)b.classList.add('wrong')});
+  const ok=i===q.ans;if(ok){score++;nCorrect++;}else nWrong++;
+  document.getElementById('sc').textContent=score;document.getElementById('pts').textContent=`${score} / ${MAX} pts`;
+  flash(ok);showFB();addNext();
+}
+
+function cVF(v){
+  if(answered)return;answered=true;
+  const q=Qs[qi];
+  ['vt','vf2'].forEach(id=>{const b=document.getElementById(id);b.disabled=true;const isT=id==='vt';if(isT===q.ans)b.classList.add('correct');else if(isT===v&&v!==q.ans)b.classList.add('wrong')});
+  const ok=v===q.ans;if(ok){score++;nCorrect++;}else nWrong++;
+  document.getElementById('sc').textContent=score;document.getElementById('pts').textContent=`${score} / ${MAX} pts`;
+  flash(ok);showFB();addNext();
+}
+
+function tChip(i){
+  if(answered)return;const c=document.getElementById('ch'+i);
+  if(selChips.has(i)){selChips.delete(i);c.classList.remove('sel')}else{selChips.add(i);c.classList.add('sel')}
+}
+
+function cChips(){
+  if(answered)return;answered=true;
+  const q=Qs[qi];const cs=new Set(q.ci);let ok=selChips.size===cs.size;
+  q.ch.forEach((_,i)=>{const c=document.getElementById('ch'+i);c.disabled=true;c.classList.remove('sel');if(cs.has(i)&&selChips.has(i))c.classList.add('correct');else if(cs.has(i)){c.classList.add('reveal');ok=false;}else if(selChips.has(i)){c.classList.add('wrong');ok=false;}else c.style.opacity='.3'});
+  if(ok){score+=2;nCorrect++;}else nWrong++;
+  document.getElementById('sc').textContent=score;document.getElementById('pts').textContent=`${score} / ${MAX} pts`;
+  flash(ok);showFB();addNext();
+}
+
+function dStart(e,t,id){dragTxt=t;dragSrc=id}
+function dOver(e){e.preventDefault();e.currentTarget.classList.add('over')}
+function dLeave(e){e.currentTarget.classList.remove('over')}
+function dDrop(e,i){e.preventDefault();e.currentTarget.classList.remove('over');if(!dragTxt)return;matchSt[i]=dragTxt;e.currentTarget.textContent=dragTxt;document.getElementById(dragSrc).classList.add('placed');dragTxt='';dragSrc=''}
+
+function cMatch(){
+  if(answered)return;answered=true;
+  const q=Qs[qi];let ok=true;
+  q.pairs.forEach((p,i)=>{const dz=document.getElementById('dz'+i);if(matchSt[i]===p.a)dz.classList.add('ok');else{dz.classList.add('ko');ok=false}});
+  const vm=document.getElementById('vm');if(vm)vm.style.display='none';
+  if(ok){score+=3;nCorrect++;}else nWrong++;
+  document.getElementById('sc').textContent=score;document.getElementById('pts').textContent=`${score} / ${MAX} pts`;
+  flash(ok);showFB();addNext();
+}
+
+function sendResults(prenom,score,pourcent,temps){
+  const body=JSON.stringify({prenom,score,pourcent,temps});
+  fetch(SHEET_URL,{method:'POST',body,headers:{'Content-Type':'text/plain'}})
+    .then(()=>{
+      const s=document.getElementById('send-status');
+      if(s){s.textContent='✓ Résultat envoyé à l\'enseignant';s.className='send-status send-ok'}
+    })
+    .catch(()=>{
+      const s=document.getElementById('send-status');
+      if(s){s.textContent='Résultat non envoyé (pas de connexion)';s.className='send-status send-err'}
+    });
+}
+
+function showResults(){
+  clearInterval(tr);
+  document.getElementById('pf').style.width='100%';
+  document.getElementById('pt').textContent='Terminé !';
+  setTag(null);
+  const pct=Math.round(score/MAX*100);
+  const emoji=pct>=80?'🏆':pct>=60?'✨':'📖';
+  const msg=pct>=80?"Brillant — tu maîtrises les théories des organisations !":pct>=60?"Bon travail ! Encore quelques révisions et ce sera parfait.":"Continue, tu vas y arriver !";
+  const used=TOTAL-tl;const m=Math.floor(used/60),s=used%60;
+  const tempsStr=`${m}m${String(s).padStart(2,'0')}s`;
+  document.getElementById('game').innerHTML=`
+    <div class="res-card">
+      <div class="res-bg"></div>
+      <div class="res-label">Résultats</div>
+      <div class="res-big">${score}</div>
+      <div class="res-max">sur ${MAX} points</div>
+      <div class="res-name">${playerName}</div>
+      <div class="res-msg">${emoji}&ensp;${msg}</div>
+      <div class="stats">
+        <div class="stat"><span class="sv">${pct}%</span><span class="sl">Réussite</span></div>
+        <div class="stat"><span class="sv">${nCorrect}</span><span class="sl">Correctes</span></div>
+        <div class="stat"><span class="sv">${nWrong}</span><span class="sl">Erreurs</span></div>
+        <div class="stat"><span class="sv">${tempsStr}</span><span class="sl">Temps</span></div>
+      </div>
+      <div class="send-status" id="send-status">Envoi du résultat…</div>
+    </div>`;
+  sendResults(playerName,score,pct+'%',tempsStr);
+}
+</script>
+</body>
+</html>
